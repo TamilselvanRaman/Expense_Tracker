@@ -1,0 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@900&family=Platypi:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Poppins", sans-serif;
+  --breakpoint-3xl: 1920px;
+  --color-primary: #875cf5;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-display);
+  }
+
+  body {
+    background-color: #fcfbfc;
+    overflow-x: hidden;
+  }
+}
+.input-box {
+  @apply w-full flex justify-between gap-3 text-sm text-black bg-slate-100 rounded px-4 py-3 border border-slate-300 outline-none;
+}
+
+.btn-primary {
+  @apply text-black border border-slate-300 rounded px-4 py-2 bg-violet-200 hover:bg-violet-500/80  transition-all duration-2 hover:text-white;
+}
