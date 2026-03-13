@@ -1,5 +1,5 @@
 import React from "react";
-import { LuTrendingUp } from "react-icons/lu";
+import { LuTrendingUp, LuTrendingDown } from "react-icons/lu";
 import authIllustration from "../assets/auth-illustration.png";
 
 // Stats Card component
