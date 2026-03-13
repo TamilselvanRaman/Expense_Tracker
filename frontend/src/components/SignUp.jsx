@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import AuthLayout from "../Layouts/AuthLayout";
 import { Link, useNavigate } from "react-router-dom";
 import Input from "./Input";
-import { UserContext } from "../Context/UserContext";
-import { useContext } from "react";
 import ProfilePhotoSelector from "./ProfilePhotoSelector";
-import axisoInstance from "../Utils/axiosInstance";
+import axiosInstance from "../Utils/axiosInstance";
 import { API_ENDPOINTS } from "../Utils/API_Paths";
+import { UserContext } from "../Context/UserContext";
 import uploadImage from "../Utils/uploadImage";
 
 function SignUp() {
@@ -15,57 +14,54 @@ function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   const { updateUser } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    setError(null); // reset previous errors
-
-
-    // ProfileImageUrl would be set here if uploading image
-    let profileImageUrl = "";
+    setError(null);
 
     if (!fullName) {
-      setError("Please enter your full name");
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-    if (!password || password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError("Please enter your legal full name");
       return;
     }
 
-    if (image) {
-      const ImgUploadRes = await uploadImage(image);
-      profileImageUrl = ImgUploadRes.imageUrl || "";
+    if (!validateEmail(email)) {
+      setError("Please enter a valid work email address");
+      return;
     }
+
+    if (!password || password.length < 8) {
+      setError("Security password must be at least 8 characters");
+      return;
+    }
+
+    let profileImageUrl = "";
 
     try {
+      if (image) {
+        const ImgUploadRes = await uploadImage(image);
+        profileImageUrl = ImgUploadRes.imageUrl || "";
+      }
 
-      const response = await axisoInstance.post(API_ENDPOINTS.AUTH.REGISTER, {
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REGISTER, {
         fullName,
         email,
         password,
         profileImageUrl,
       });
-      
+
       const { token, user } = response.data;
-      console.log(user)
       if (token) {
-        // Store token in local storage
         localStorage.setItem("token", token);
-        updateUser(user); // Assuming you have a function to update user context
+        updateUser(user);
         navigate("/dashboard");
       }
     } catch (error) {
-      // console.error("Error during sign up:", error);
-      console.log("Error during sign up:", error.response.data.message);
-      setError("An error occurred during sign up. Please try again.");
+      const message =
+        error?.response?.data?.message || "Registration failed. Please try again.";
+      setError(message);
     }
   };
 
@@ -76,14 +72,18 @@ function SignUp() {
 
   return (
     <AuthLayout>
-      <div className="lg:w-[100%] h-auto md:h-full mt-10 md:mt-0 flex flex-col justify-center">
-        <h3 className="text-xl font-semibold text-black">Create an Account</h3>
-        <p className="text-xs text-slate-700 mt-[5px] mb-6">
-          Join us today by entering your details below
-        </p>
+      <div className="w-full">
+        <div className="mb-8 text-center md:text-left">
+          <h3 className="text-2xl font-display font-bold text-slate-900">Create Professional Account</h3>
+          <p className="text-sm text-slate-500 mt-2">
+            Join Expenzo to start your financial optimization journey
+          </p>
+        </div>
 
-        <form onSubmit={handleSignUp} >
-          <ProfilePhotoSelector image={image} setImage={setImage} />
+        <form onSubmit={handleSignUp} className="flex flex-col gap-5">
+          <div className="flex justify-center mb-2">
+             <ProfilePhotoSelector image={image} setImage={setImage} />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -93,35 +93,44 @@ function SignUp() {
               label="Full Name"
               onChange={(e) => setFullName(e.target.value)}
             />
+
             <Input
               type="email"
-              placeholder="john@example.com"
+              placeholder="name@company.com"
               value={email}
-              label="Email Address"
+              label="Work Email"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 col-span-2">
-            <Input
-              type="password"
-              placeholder="Min 8 characters"
-              value={password}
-              label="Password"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {error && <p className="text-red-500 text-xs">{error}</p>}
-            <button
-              type="submit"
-              className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
-            >
-              Sign Up
-            </button>
-          </div>
 
-          <p className="text-[13px] text-slate-800 mt-3">
-            Already have an account?{" "}
-            <Link className="font-medium text-primary underline" to="/login">
-              Login
+          <Input
+            type="password"
+            placeholder="Min 8 characters"
+            value={password}
+            label="Security Password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && (
+            <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg border border-red-100 animate-shake">
+              {error}
+            </div>
+          )}
+
+          <p className="text-[12px] text-slate-500 leading-relaxed text-center md:text-left">
+            By creating an account, you agree to our{" "}
+            <span className="text-primary font-medium cursor-pointer hover:underline">Terms of Service</span> and{" "}
+            <span className="text-primary font-medium cursor-pointer hover:underline">Compliance Standards</span>.
+          </p>
+
+          <button className="btn-primary w-full mt-2" type="submit">
+            Establish Account
+          </button>
+
+          <p className="text-sm text-center text-slate-600 mt-6">
+            Already registered?{" "}
+            <Link className="font-semibold text-primary hover:underline" to={"/login"}>
+              Sign In
             </Link>
           </p>
         </form>
@@ -131,3 +140,4 @@ function SignUp() {
 }
 
 export default SignUp;
+

@@ -2,15 +2,15 @@ import React from "react";
 
 function InfoCard({ icon, label, value, color }) {
   return (
-    <div className="flex gap-6 bg-white p-6 rounded-2xl shadow-md shadow-gray-100 border border-gray-200/50">
+    <div className="card-premium flex gap-5 items-center">
       <div
-        className={`w-14 h-14 flex items-center justify-center text-[26px] text-white ${color} rounded-full drop-shadow-xl`}
+        className={`w-14 h-14 flex items-center justify-center text-2xl text-white ${color} rounded-2xl shadow-lg ring-4 ring-white/10`}
       >
         {icon}
       </div>
       <div>
-        <h6 className="text-sm text-gray-500 mb-1">{label}</h6>
-        <span className="text-[22px]">${value}</span>
+        <h6 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</h6>
+        <span className="text-2xl font-bold text-slate-900 tracking-tight">{value}</span>
       </div>
     </div>
   );

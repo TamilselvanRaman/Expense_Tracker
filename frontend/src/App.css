@@ -1,26 +1,46 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@900&family=Platypi:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Poppins", sans-serif;
-  --breakpoint-3xl: 1920px;
-  --color-primary: #875cf5;
+  --font-display: "Outfit", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  
+  --color-primary: #6366f1; /* Indigo 500 */
+  --color-primary-dark: #4f46e5; /* Indigo 600 */
+  --color-secondary: #ec4899; /* Pink 500 */
+  
+  --color-bg-main: #f8fafc; /* Slate 50 */
+  --color-surface: #ffffff;
+  
+  --shadow-premium: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 
 @layer base {
   html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
   }
 
   body {
-    background-color: #fcfbfc;
+    background-color: var(--color-bg-main);
+    color: #1e293b; /* Slate 800 */
     overflow-x: hidden;
   }
 }
+
 .input-box {
-  @apply w-full flex justify-between gap-3 text-sm text-black bg-slate-100 rounded px-4 py-3 border border-slate-300 outline-none;
+  @apply w-full flex justify-between gap-3 text-sm text-slate-700 bg-white rounded-lg px-4 py-3 border border-slate-200 shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all outline-none;
 }
 
 .btn-primary {
-  @apply text-black border border-slate-300 rounded px-4 py-2 bg-violet-200 hover:bg-violet-500/80  transition-all duration-2 hover:text-white;
+  @apply inline-flex items-center justify-center px-6 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg shadow-md hover:shadow-lg transform active:scale-95 transition-all duration-200 cursor-pointer;
 }
+
+.card-premium {
+  @apply bg-white rounded-2xl border border-slate-100 shadow-premium p-6;
+}
+

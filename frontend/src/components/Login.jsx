@@ -4,8 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import Input from "./Input";
 import { UserContext } from "../Context/UserContext";
 import { useContext } from "react";
-import axisoInstance from "../Utils/axiosInstance";
-import { API_BASE_URL, API_ENDPOINTS } from "../Utils/API_Paths";
+import axiosInstance from "../Utils/axiosInstance";
+import { API_ENDPOINTS } from "../Utils/API_Paths";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -13,7 +13,6 @@ function Login() {
   const [error, setError] = useState(null);
 
   const { updateUser } = useContext(UserContext);
-
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -31,32 +30,21 @@ function Login() {
 
     setError("");
 
-    // TODO: Call login API here
-    // Example API call (replace with actual API call)
-
     try {
-      const response = await axisoInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
         email,
         password,
       });
-      console.log("Login response:", response.data);
 
       const { token, user } = response.data;
-      console.log("User data:", user);
       if (token) {
-        // Update user context
         updateUser(user);
-        
-        // Store token in local storage
         localStorage.setItem("token", token);
         navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Login error:", error);
-
       const message =
         error?.response?.data?.message || "Login failed. Please try again.";
-
       setError(message);
     }
   };
@@ -68,40 +56,54 @@ function Login() {
 
   return (
     <AuthLayout>
-      <div className="lg:w-[70%] h-3/4 md:h-full flex flex-col justify-center">
-        <h3 className="text-xl font-semibold text-black">Welcome Back</h3>
-        <p className="text-xs text-slate-700 mt-[5px] mb-6">
-          Please enter your details to log in
-        </p>
+      <div className="w-full">
+        <div className="mb-8">
+          <h3 className="text-2xl font-display font-bold text-slate-900">Welcome Back</h3>
+          <p className="text-sm text-slate-500 mt-2">
+            Securely access your financial overview
+          </p>
+        </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <form onSubmit={handleLogin} className="flex flex-col gap-5">
           <Input
             type="email"
-            placeholder="john@example.com"
+            placeholder="name@company.com"
             value={email}
-            label="Email Address"
+            label="Work Email Address"
             onChange={(e) => setEmail(e.target.value)}
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
           <Input
             type="password"
-            placeholder="Min 8 characters"
+            placeholder="••••••••"
             value={password}
             label="Password"
             onChange={(e) => setPassword(e.target.value)}
-            className="border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
 
-          {error && <p className="text-red-500 text-xs pb-2.5">{error}</p>}
+          {error && (
+            <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg border border-red-100 animate-shake">
+              {error}
+            </div>
+          )}
 
-          <button className="btn-primary" type="submit" onClick={handleLogin}>
-            Login
+          <div className="flex items-center justify-between text-[13px] mt-1">
+            <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+              <input type="checkbox" className="rounded border-slate-300 text-primary focus:ring-primary/20" />
+              Remember me
+            </label>
+            <Link to="/forgot-password" size="sm" className="text-primary font-medium hover:underline">
+               Forgot password?
+            </Link>
+          </div>
+
+          <button className="btn-primary w-full mt-2" type="submit">
+            Sign In to Expenzo
           </button>
 
-          <p className="text-[13px] text-slate-800 mt-3">
-            Don't have an account?{" "}
-            <Link className="font-medium text-primary underline" to={"/signup"}>
-              Sign Up
+          <p className="text-sm text-center text-slate-600 mt-6">
+            New to Expenzo?{" "}
+            <Link className="font-semibold text-primary hover:underline" to={"/signup"}>
+              Create a free account
             </Link>
           </p>
         </form>
@@ -111,3 +113,4 @@ function Login() {
 }
 
 export default Login;
+

@@ -4,7 +4,7 @@ import { useUserAuth } from "../Hooks/useUserAuth";
 import axiosInstance from "../Utils/axiosInstance";
 import { API_ENDPOINTS } from "../Utils/API_Paths";
 import InfoCard from "../Cards/InfoCard";
-import { LuHandCoins, LuWalletMinimal } from "react-icons/lu";
+import { LuHandCoins, LuWalletMinimal, LuTrendingUp } from "react-icons/lu";
 import { IoMdCard } from "react-icons/io";
 import { addThousandsSeparator } from "../Utils/helper";
 
@@ -20,8 +20,8 @@ function Home() {
         API_ENDPOINTS.DASHBOARD.GET_DATA
       );
 
-      if (response.data && response.data.success) {
-        setDashboardData(response.data);
+      if (response.data && response.data.status === 'success') {
+        setDashboardData(response.data.data);
       }
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
@@ -36,134 +36,159 @@ function Home() {
     }
   }, [loading]);
 
-  // Recent transactions component
   const RecentTransactions = () => {
     if (!dashboardData?.recentTransactions?.length) {
       return (
-        <p className="text-gray-500 text-center py-4">No recent transactions</p>
+        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+          <LuWalletMinimal className="text-4xl mb-2 opacity-20" />
+          <p className="text-sm font-medium">No recent transactions to display</p>
+        </div>
       );
     }
 
     return (
       <div className="space-y-3">
-        {dashboardData.recentTransactions
-          .slice(0, 5)
-          .map((transaction, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">
-                  {transaction.icon || (transaction.source ? "💵" : "💰")}
-                </span>
-                <div>
-                  <p className="font-medium">
-                    {transaction.source || transaction.category}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(
-                      transaction.createdAt || transaction.date
-                    ).toLocaleDateString()}
-                  </p>
-                </div>
+        {dashboardData.recentTransactions.map((transaction, index) => (
+          <div
+            key={transaction._id || index}
+            className="flex justify-between items-center p-4 bg-slate-50/50 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-xl border border-slate-100">
+                {transaction.icon || (transaction.source ? "💼" : "🛍️")}
               </div>
+              <div>
+                <p className="font-semibold text-slate-900 text-sm">
+                  {transaction.source || transaction.category}
+                </p>
+                <p className="text-xs text-slate-500 font-medium">
+                  {new Date(transaction.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
+                  })}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
               <span
-                className={`font-semibold ${
-                  transaction.source ? "text-green-600" : "text-red-600"
+                className={`text-sm font-bold ${
+                  transaction.source ? "text-emerald-600" : "text-rose-600"
                 }`}
               >
-                {transaction.source ? "+" : "-"}$
-                {addThousandsSeparator(transaction.amount)}
+                {transaction.source ? "+" : "-"}${addThousandsSeparator(transaction.amount)}
               </span>
             </div>
-          ))}
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
     <DashboardLayout activeMenu="Dashboard">
-      <div className="my-5 mx-auto max-w-6xl">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <header className="mb-10">
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Overview</h1>
+          <p className="text-slate-500 mt-1 font-medium">Track and manage your finances with ease.</p>
+        </header>
+
         {loading || isFetching ? (
-          <div className="text-center">Loading dashboard data...</div>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
         ) : (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="space-y-8">
+            {/* Summary Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <InfoCard
-                icon={<LuWalletMinimal className="text-2xl" />}
-                label="Total Balance"
-                value={`$${addThousandsSeparator(
-                  dashboardData?.totalBalance || 0
-                )}`}
-                color="bg-blue-500"
+                icon={<LuWalletMinimal />}
+                label="Available Balance"
+                value={`$${addThousandsSeparator(dashboardData?.balances?.available || 0)}`}
+                color="bg-indigo-600"
               />
               <InfoCard
-                icon={<LuHandCoins className="text-2xl" />}
+                icon={<LuHandCoins />}
                 label="Total Income"
-                value={`$${addThousandsSeparator(
-                  dashboardData?.totalIncome || 0
-                )}`}
-                color="bg-green-500"
+                value={`$${addThousandsSeparator(dashboardData?.balances?.totalIncome || 0)}`}
+                color="bg-emerald-500"
               />
               <InfoCard
-                icon={<IoMdCard className="text-2xl" />}
+                icon={<IoMdCard />}
                 label="Total Expense"
-                value={`$${addThousandsSeparator(
-                  dashboardData?.totalExpense || 0
-                )}`}
-                color="bg-red-500"
+                value={`$${addThousandsSeparator(dashboardData?.balances?.totalExpense || 0)}`}
+                color="bg-rose-500"
               />
             </div>
 
-            {/* Charts and Recent Transactions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent 60 Days Income */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold mb-4">
-                  Recent Income (60 Days)
-                </h3>
-                <p className="text-2xl font-bold text-green-600">
-                  $
-                  {addThousandsSeparator(
-                    dashboardData?.last60DaysIncomeTotal?.totalIncome || 0
-                  )}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  {dashboardData?.last60DaysIncomeTotal?.transactions?.length ||
-                    0}{" "}
-                  transactions
-                </p>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Analytics Section */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Income Snapshot */}
+                  <div className="card-premium h-fit">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-slate-900">Income Insight</h3>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">Last 60 Days</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900">
+                          ${addThousandsSeparator(dashboardData?.balances?.totalIncome || 0)}
+                        </p>
+                        <p className="text-xs font-medium text-slate-500 mt-1">
+                          Total earnings tracked
+                        </p>
+                      </div>
+                      <LuTrendingUp className="text-4xl text-emerald-500/20 mb-1" />
+                    </div>
+                  </div>
+
+                  {/* Expense Snapshot */}
+                  <div className="card-premium h-fit">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-slate-900">Expense Insight</h3>
+                      <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase">Last 30 Days</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900">
+                          ${addThousandsSeparator(dashboardData?.balances?.totalExpense || 0)}
+                        </p>
+                        <p className="text-xs font-medium text-slate-500 mt-1">
+                          Total spendings tracked
+                        </p>
+                      </div>
+                      <IoMdCard className="text-4xl text-rose-500/20 mb-1" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analytical Placeholder/Chart would go here */}
+                <div className="card-premium min-h-[320px] flex items-center justify-center border-dashed">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <LuTrendingUp className="text-2xl text-slate-400" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900">Advanced Analytics</p>
+                    <p className="text-xs text-slate-500 mt-1">Data visualization features coming in v2.0</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Recent 30 Days Expense */}
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold mb-4">
-                  Recent Expense (30 Days)
-                </h3>
-                <p className="text-2xl font-bold text-red-600">
-                  $
-                  {addThousandsSeparator(
-                    dashboardData?.last30DaysExpenseTotal?.totalExpense || 0
-                  )}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  {dashboardData?.last30DaysExpenseTotal?.transactions
-                    ?.length || 0}{" "}
-                  transactions
-                </p>
-              </div>
-
-              {/* Recent Transactions */}
-              <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold mb-4">
-                  Recent Transactions
-                </h3>
-                <RecentTransactions />
+              {/* Sidebar: Recent Activity */}
+              <div className="lg:col-span-1">
+                <div className="card-premium h-full">
+                  <header className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Recent Activity</h3>
+                    <button className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 uppercase">View All</button>
+                  </header>
+                  <RecentTransactions />
+                </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </DashboardLayout>

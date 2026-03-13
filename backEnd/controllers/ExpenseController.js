@@ -1,32 +1,15 @@
-// controllers/ExpenseController.js
 const Expense = require("../models/Expense.js");
 const XLSX = require("xlsx");
 const path = require("path");
 const fs = require("fs");
 
 // Add Expense
-exports.addExpense = async (req, res) => {
+exports.addExpense = async (req, res, next) => {
   try {
-    const userId = req.user._id;
     const { icon, category, amount, date } = req.body;
 
-    // Validation
-    if (!date || !category || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all fields: date, category, and amount",
-      });
-    }
-
-    if (isNaN(amount) || parseFloat(amount) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount must be a positive number",
-      });
-    }
-
     const newExpense = new Expense({
-      userId,
+      userId: req.user._id,
       icon: icon || "💰",
       category,
       amount: parseFloat(amount),
@@ -36,93 +19,58 @@ exports.addExpense = async (req, res) => {
     await newExpense.save();
 
     res.status(201).json({
-      success: true,
-      message: "Expense added successfully",
+      status: 'success',
+      message: "Expense record created successfully",
       expense: newExpense,
     });
   } catch (error) {
-    console.error("Add expense error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // Get all Expenses
-exports.getAllExpense = async (req, res) => {
+exports.getAllExpense = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const expenses = await Expense.find({ userId }).sort({ date: -1 });
+    const expenses = await Expense.find({ userId: req.user._id }).sort({ date: -1 }).lean();
 
     res.status(200).json({
-      success: true,
-      message: "Expenses fetched successfully",
+      status: 'success',
+      count: expenses.length,
       expenses,
     });
   } catch (error) {
-    console.error("Get expenses error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // Delete Expense
-exports.deleteExpense = async (req, res) => {
+exports.deleteExpense = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const expenseId = req.params.id;
-
-    const expense = await Expense.findOneAndDelete({ _id: expenseId, userId });
+    const expense = await Expense.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
 
     if (!expense) {
       return res.status(404).json({
-        success: false,
-        message: "Expense not found",
+        status: 'error',
+        message: "Expense record not found",
       });
     }
 
     res.status(200).json({
-      success: true,
-      message: "Expense deleted successfully",
+      status: 'success',
+      message: "Expense record deleted successfully",
     });
   } catch (error) {
-    console.error("Delete expense error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // Update Expense
-exports.updateExpense = async (req, res) => {
+exports.updateExpense = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const expenseId = req.params.id;
     const { icon, category, amount, date } = req.body;
 
-    if (!date || !category || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all fields",
-      });
-    }
-
-    if (isNaN(amount) || parseFloat(amount) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount must be a positive number",
-      });
-    }
-
     const updatedExpense = await Expense.findOneAndUpdate(
-      { _id: expenseId, userId },
+      { _id: req.params.id, userId: req.user._id },
       {
         icon: icon || "💰",
         category,
@@ -134,79 +82,61 @@ exports.updateExpense = async (req, res) => {
 
     if (!updatedExpense) {
       return res.status(404).json({
-        success: false,
-        message: "Expense not found",
+        status: 'error',
+        message: "Expense record not found",
       });
     }
 
     res.status(200).json({
-      success: true,
-      message: "Expense updated successfully",
+      status: 'success',
+      message: "Expense record updated successfully",
       expense: updatedExpense,
     });
   } catch (error) {
-    console.error("Update expense error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // Download Expense Excel
-exports.downloadExpenseExcel = async (req, res) => {
+exports.downloadExpenseExcel = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const expenses = await Expense.find({ userId }).sort({ date: -1 });
+    const expenses = await Expense.find({ userId: req.user._id }).sort({ date: -1 }).lean();
 
     if (expenses.length === 0) {
       return res.status(404).json({
-        success: false,
-        message: "No expenses found to download",
+        status: 'error',
+        message: "No expense records available for export",
       });
     }
 
     const data = expenses.map((item, index) => ({
-      "S.No": index + 1,
+      "Ref ID": index + 1,
       Category: item.category,
       Amount: item.amount,
       Date: item.date.toLocaleDateString(),
-      Icon: item.icon,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Expenses");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ExpenseReport");
 
-    // Ensure uploads directory exists
     const uploadsDir = path.join(__dirname, "../uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-    const filePath = path.join(uploadsDir, `expenses-${Date.now()}.xlsx`);
+    const fileName = `Expense_Report_${Date.now()}.xlsx`;
+    const filePath = path.join(uploadsDir, fileName);
     XLSX.writeFile(workbook, filePath);
 
-    res.download(filePath, "Expenses.xlsx", (err) => {
+    res.download(filePath, fileName, (err) => {
       if (err) {
-        console.error("Error downloading file:", err);
-        res.status(500).json({
-          success: false,
-          message: "Error downloading file",
-        });
+        if (!res.headersSent) res.status(500).json({ message: "Export failed" });
       }
-      // Clean up file after download
       fs.unlink(filePath, (err) => {
-        if (err) console.error("Error deleting file:", err);
+        if (err) console.error("Cleanup error:", err);
       });
     });
   } catch (error) {
-    console.error("Error generating Excel file:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
+

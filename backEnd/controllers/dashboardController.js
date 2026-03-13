@@ -2,100 +2,92 @@ const Income = require("../models/Income");
 const Expense = require("../models/Expense");
 const { Types } = require("mongoose");
 
-exports.getDashboardData = async (req, res) => {
+exports.getDashboardData = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    console.log("User ID:", userId);
-    const userObjectId = new Types.ObjectId(String(userId));
+    const userObjectId = new Types.ObjectId(req.user._id);
 
-    // Total Income
-    const totalIncome = await Income.aggregate([
-      { $match: { userId: userObjectId } },
-      {
-        $group: { _id: null, totalIncome: { $sum: { $toDouble: "$amount" } } },
-      },
+    // Parallel execution for stats
+    const [incomeStats, expenseStats] = await Promise.all([
+      Income.aggregate([
+        { $match: { userId: userObjectId } },
+        {
+          $group: { _id: null, total: { $sum: "$amount" } },
+        },
+      ]),
+      Expense.aggregate([
+        { $match: { userId: userObjectId } },
+        {
+          $group: { _id: null, total: { $sum: "$amount" } },
+        },
+      ])
     ]);
 
-    // Total Expense
-    const totalExpense = await Expense.aggregate([
-      { $match: { userId: userObjectId } },
-      {
-        $group: { _id: null, totalExpense: { $sum: { $toDouble: "$amount" } } },
-      },
-    ]);
+    const totalIncome = incomeStats[0]?.total || 0;
+    const totalExpense = expenseStats[0]?.total || 0;
 
-    // Last 60 days income
+    // Last 60 days analytics
+    const sixtiesDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
     const last60DaysIncome = await Income.aggregate([
       {
         $match: {
           userId: userObjectId,
-          createdAt: { $gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) },
+          date: { $gte: sixtiesDaysAgo },
         },
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          totalIncome: { $sum: { $toDouble: "$amount" } },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          amount: { $sum: "$amount" },
         },
       },
+      { $sort: { _id: 1 } }
     ]);
-    const last60DaysIncomeTotal = last60DaysIncome.reduce(
-      (acc, curr) => acc + curr.totalIncome,
-      0
-    );
 
-    // Last 30 days expense
+    // Last 30 days analytics
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const last30DaysExpense = await Expense.aggregate([
       {
         $match: {
           userId: userObjectId,
-          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          date: { $gte: thirtyDaysAgo },
         },
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          totalExpense: { $sum: { $toDouble: "$amount" } },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          amount: { $sum: "$amount" },
         },
       },
+      { $sort: { _id: 1 } }
     ]);
-    const last30DaysExpenseTotal = last30DaysExpense.reduce(
-      (acc, curr) => acc + curr.totalExpense,
-      0
-    );
 
-    // Get last 5 transactions (combined)
-    const incomeTrans = await Income.find({ userId: userObjectId })
-      .sort({ createdAt: -1 })
-      .limit(5);
-    const expenseTrans = await Expense.find({ userId: userObjectId })
-      .sort({ createdAt: -1 })
-      .limit(5);
+    // Combined recent activity
+    const [recentIncome, recentExpense] = await Promise.all([
+      Income.find({ userId: userObjectId }).sort({ date: -1 }).limit(5).lean(),
+      Expense.find({ userId: userObjectId }).sort({ date: -1 }).limit(5).lean()
+    ]);
 
-    const recentTransactions = [...incomeTrans, ...expenseTrans]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const recentTransactions = [...recentIncome, ...recentExpense]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 5);
 
     res.status(200).json({
-      success: true,
-      message: "Dashboard data fetched successfully",
-      totalBalance:
-        (totalIncome[0]?.totalIncome || 0) -
-        (totalExpense[0]?.totalExpense || 0),
-      totalIncome: totalIncome[0]?.totalIncome || 0,
-      totalExpense: totalExpense[0]?.totalExpense || 0,
-      last60DaysIncomeTotal: {
-        totalIncome: last60DaysIncomeTotal,
-        transactions: last60DaysIncome,
+      status: 'success',
+      data: {
+        balances: {
+          available: totalIncome - totalExpense,
+          totalIncome,
+          totalExpense,
+        },
+        analytics: {
+          last60DaysIncome,
+          last30DaysExpense,
+        },
+        recentTransactions,
       },
-      last30DaysExpenseTotal: {
-        totalExpense: last30DaysExpenseTotal,
-        transactions: last30DaysExpense,
-      },
-      recentTransactions,
     });
   } catch (error) {
-    console.error("Error fetching dashboard data:", error.message);
-    res.status(500).json({ message: "Server error" });
+    next(error);
   }
 };
+

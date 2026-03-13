@@ -1,43 +1,42 @@
 import React, { useState } from "react";
-import { FaRegEye, FaRegEyeSlash } from "react-icons/fa";
+import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
 
 function Input({ type, placeholder, value, onChange, label }) {
-  const [showPasssword, setShowpassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleTogglePassword = () => {
-    setShowpassword(!showPasssword);
+    setShowPassword(!showPassword);
   };
-  return (
-    <div>
-      <label className="text-[13px] text-slate-800">{label}</label>
 
-      <div className="input-box">
+  return (
+    <div className="flex flex-col gap-1.5 Group">
+      <label className="text-[13px] font-medium text-slate-700 ml-1">
+        {label}
+      </label>
+
+      <div className="relative flex items-center">
         <input
           type={
-            type == "password" ? (showPasssword ? "text" : "password") : type
+            type === "password" ? (showPassword ? "text" : "password") : type
           }
           placeholder={placeholder}
-          className="w-full bg-transparent outline-none"
+          className="w-full bg-white text-slate-900 text-sm rounded-xl px-4 py-3 border border-slate-200 shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none placeholder:text-slate-400"
           value={value}
           onChange={(e) => onChange(e)}
         />
 
-        {type == "password" && (
-          <>
-            {showPasssword ? (
-              <FaRegEye
-                size={20}
-                className="text-primary cursor-pointer"
-                onClick={() => handleTogglePassword()}
-              />
+        {type === "password" && (
+          <button
+            type="button"
+            onClick={handleTogglePassword}
+            className="absolute right-4 text-slate-400 hover:text-primary transition-colors focus:outline-none"
+          >
+            {showPassword ? (
+              <FaRegEye size={18} />
             ) : (
-              <FaRegEyeSlash
-                size={20}
-                className="text-slate-400 cursor-pointer"
-                onClick={() => handleTogglePassword()}
-              />
+              <FaRegEyeSlash size={18} />
             )}
-          </>
+          </button>
         )}
       </div>
     </div>
@@ -45,3 +44,4 @@ function Input({ type, placeholder, value, onChange, label }) {
 }
 
 export default Input;
+

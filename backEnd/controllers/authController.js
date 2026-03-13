@@ -1,11 +1,10 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.js");
 
-// Generate JWT Token - FIXED VERSION
+// Generate JWT Token
 const generateToken = (id) => {
-  // Verify JWT_SECRET is available
   if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not defined");
+    throw new Error("JWT_SECRET is missing from environment variables");
   }
 
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -13,26 +12,21 @@ const generateToken = (id) => {
   });
 };
 
-//Register User
-exports.registerUser = async (req, res) => {
-  const { fullName, email, password, profileImageUrl } = req.body;
-
-  //Validate: check for missing fields
-  if (!fullName || !email || !password) {
-    return res.status(400).json({ message: "Please fill all fields" });
-  }
-
-  // Set a default profile image if not provided or it's empty
-  const image = profileImageUrl || "https://www.gravatar.com/avatar/?d=mp";
-
+// Register User
+exports.registerUser = async (req, res, next) => {
   try {
-    // Check if user already exists
+    const { fullName, email, password, profileImageUrl } = req.body;
+
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ 
+        status: 'error',
+        message: "A user with this email already exists" 
+      });
     }
 
-    // Create new user
+    const image = profileImageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6366f1&color=fff`;
+
     const user = await User.create({
       fullName,
       email,
@@ -41,67 +35,73 @@ exports.registerUser = async (req, res) => {
     });
 
     res.status(201).json({
-      _id: user._id,
-      user,
+      status: 'success',
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl
+      },
       token: generateToken(user._id),
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error" });
+    next(error);
   }
 };
 
-//Login User
-// In authController.js - loginUser function
-exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: "Please fill all fields" });
-  }
-
+// Login User
+exports.loginUser = async (req, res, next) => {
   try {
+    const { email, password } = req.body;
+
+    // Use lean() for performance since we don't need Mongoose methods except matchPassword
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ 
+        status: 'error',
+        message: "Invalid credentials provided" 
+      });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ 
+        status: 'error',
+        message: "Invalid credentials provided" 
+      });
     }
-
-    const token = generateToken(user._id);
-    
-    // DEBUG: Log the token details
-    console.log("Generated token:", token);
-    console.log("Token length:", token.length);
-    console.log("Token parts:", token.split('.').length);
 
     res.status(200).json({
-      _id: user._id,
-      user,
-      token: token,
-      debug: {
-        tokenLength: token.length,
-        tokenParts: token.split('.').length
-      }
+      status: 'success',
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl
+      },
+      token: generateToken(user._id),
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    next(error);
   }
 };
 
-//Get User Info
-exports.getUserInfo = async (req, res) => {
-  const userId = req.user._id; // Assuming you have middleware to set req.user
-
+// Get User Info
+exports.getUserInfo = async (req, res, next) => {
   try {
-    const user = await User.findById(userId).select("-password"); // Exclude password from response
+    const user = await User.findById(req.user._id).select("-password").lean();
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ 
+        status: 'error',
+        message: "User context not found" 
+      });
     }
-    res.status(200).json(user);
+    res.status(200).json({
+      status: 'success',
+      user
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Server error" });
+    next(error);
   }
 };
+

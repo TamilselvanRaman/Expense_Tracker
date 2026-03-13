@@ -1,118 +1,115 @@
-const User = require("../models/User.js");
 const Income = require("../models/Income.js");
 const XLSX = require("xlsx");
 const path = require("path");
 const fs = require("fs");
 
-// Add Income source code here
-exports.addIncome = async (req, res) => {
-  const userId = req.user._id;
-
+// Add Income
+exports.addIncome = async (req, res, next) => {
   try {
     const { icon, source, amount, date } = req.body;
 
-    // Validate the data
-    if (!date || !source || !amount) {
-      return res.status(400).json({ message: "Please fill all fields" });
-    }
-
-    // Optional: Validate amount is a number
-    if (isNaN(amount)) {
-      return res.status(400).json({ message: "Amount must be a number" });
-    }
-
     const newIncome = new Income({
-      userId,
-      icon,
+      userId: req.user._id,
+      icon: icon || "💰",
       source,
-      amount,
+      amount: parseFloat(amount),
       date: new Date(date),
     });
 
     await newIncome.save();
 
-    res.status(201).json({ message: "Income added successfully", newIncome });
+    res.status(201).json({ 
+      status: 'success',
+      message: "Income source registered successfully", 
+      income: newIncome 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    next(error);
   }
 };
 
-// Get all Income source
-exports.getAllIncome = async (req, res) => {
-  const userId = req.user._id;
-
+// Get all Income
+exports.getAllIncome = async (req, res, next) => {
   try {
-    const income = await Income.find({ userId }).sort({ date: -1 });
-    res.status(200).json({ message: "Income fetched successfully", income });
+    const income = await Income.find({ userId: req.user._id }).sort({ date: -1 }).lean();
+    res.status(200).json({ 
+        status: 'success',
+        count: income.length,
+        income 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    next(error);
   }
 };
 
-// Delete Income source code here
-exports.deleteIncome = async (req, res) => {
-  const userId = req.user._id;
-  const incomeId = req.params.id;
-
+// Delete Income
+exports.deleteIncome = async (req, res, next) => {
   try {
-    const income = await Income.findOneAndDelete({ _id: incomeId, userId });
+    const income = await Income.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
 
     if (!income) {
-      return res.status(404).json({ message: "Income not found" });
+      return res.status(404).json({ 
+        status: 'error',
+        message: "Income record not found" 
+      });
     }
 
-    res.status(200).json({ message: "Income deleted successfully" });
+    res.status(200).json({ 
+        status: 'success',
+        message: "Income record deleted successfully" 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    next(error);
   }
 };
 
-// Update Income source code here
-exports.updateIncome = async (req, res) => {
-  const userId = req.user._id;
-  const incomeId = req.params.id;
-
+// Update Income
+exports.updateIncome = async (req, res, next) => {
   try {
     const { icon, source, amount, date } = req.body;
 
-    // Validate the data
-    if (!date || !source || !amount) {
-      return res.status(400).json({ message: "Please fill all fields" });
-    }
-
-    // Optional: Validate amount is a number
-    if (isNaN(amount)) {
-      return res.status(400).json({ message: "Amount must be a number" });
-    }
-
     const updatedIncome = await Income.findOneAndUpdate(
-      { _id: incomeId, userId },
-      { icon, source, amount, date: new Date(date) },
-      { new: true }
+      { _id: req.params.id, userId: req.user._id },
+      { 
+          icon: icon || "💰", 
+          source, 
+          amount: parseFloat(amount), 
+          date: new Date(date) 
+      },
+      { new: true, runValidators: true }
     );
 
     if (!updatedIncome) {
-      return res.status(404).json({ message: "Income not found" });
+      return res.status(404).json({ 
+        status: 'error',
+        message: "Income record not found" 
+      });
     }
 
-    res
-      .status(200)
-      .json({ message: "Income updated successfully", updatedIncome });
+    res.status(200).json({ 
+        status: 'success',
+        message: "Income record updated successfully", 
+        income: updatedIncome 
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    next(error);
   }
 };
 
-// Download Income Excel source code here
-exports.downloadIncomExcel = async (req, res) => {
-  const userId = req.user._id;
-  const incomeId = req.params.id;
-
+// Download Income Excel
+exports.downloadIncomExcel = async (req, res, next) => {
   try {
-    const income = await Income.find({userId }).sort({ date: -1 });
-   
-    //Perpare the data for Excel
-    const data = income.map((item) => ({
+    const income = await Income.find({ userId: req.user._id }).sort({ date: -1 }).lean();
+    
+    if (income.length === 0) {
+        return res.status(404).json({
+            status: 'error',
+            message: "No income records available for export"
+        });
+    }
+
+    const data = income.map((item, index) => ({
+      "Ref ID": index + 1,
       Source: item.source,
       Amount: item.amount,
       Date: item.date.toLocaleDateString(),
@@ -120,23 +117,25 @@ exports.downloadIncomExcel = async (req, res) => {
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Income");
-    const filePath = path.join(__dirname, "../uploads/income.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "IncomeSummary");
+    
+    const uploadsDir = path.join(__dirname, "../uploads");
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+    const fileName = `Income_Report_${Date.now()}.xlsx`;
+    const filePath = path.join(uploadsDir, fileName);
     XLSX.writeFile(workbook, filePath);
 
-    res.download(filePath, (err) => {
+    res.download(filePath, fileName, (err) => {
       if (err) {
-        console.error("Error downloading file:", err);
-        res.status(500).json({ message: "Error downloading file" });
-      } else {
-        // Optionally delete the file after download
-        fs.unlink(filePath, (err) => {
-          if (err) console.error("Error deleting file:", err);
-        });
+        if (!res.headersSent) res.status(500).json({ message: "Export failed" });
       }
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Cleanup error:", err);
+      });
     });
   } catch (error) {
-    console.error("Error generating Excel file:", error);
-    res.status(500).json({ message: "Server error", error });
+    next(error);
   }
 };
+
