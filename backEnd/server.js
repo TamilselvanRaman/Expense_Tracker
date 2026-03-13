@@ -37,6 +37,7 @@ connectDB();
 // CORS Configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
   "http://localhost:5173",
   "http://localhost:5174",
 ].filter(Boolean);
@@ -45,9 +46,15 @@ const corsOptions = {
   origin: function (origin, callback) {
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === "development") {
+    
+    const isAllowed = allowedOrigins.some(allowed => origin.startsWith(allowed)) || 
+                     allowedOrigins.indexOf(origin) !== -1 ||
+                     process.env.NODE_ENV === "development";
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.error(`CORS Blocked: Origin ${origin} not in`, allowedOrigins);
       callback(new Error("Not allowed by CORS"));
     }
   },
